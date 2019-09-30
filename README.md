@@ -77,6 +77,20 @@ let formElement2 = document.getElementById('form2');
 const form2 = new BaseForm(formElement2);
 ```
 
+## API
+
+### new Form(element, options = {})
+
+#### element
+
+*Required*<br>
+Type: `HTMLFormElement`
+
+#### options
+
+*Optional*<br>
+Type: `Object`
+
 ## Options
 
 ### async
