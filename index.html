@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Modal examples</title>
+    <link rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+            integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+            crossorigin="anonymous">
+    <link rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/themes/prism-okaidia.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@deleteagency/live-highlight@0.0.1/build/live-highlight.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.min.js"
+            integrity="sha256-S1J4GVHHDMiirir9qsXWc8ZWw74PHHafpsHp5PXtjTs="
+            crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/axios-mock-adapter@1.17.0/dist/axios-mock-adapter.min.js"></script>
+    <script src="build/forms.min.js"></script>
+
+    <style>
+        [data-form-control].is-invalid .invalid-feedback {
+            display: block;
+        }
+    </style>
+</head>
+<script>
+    LiveHighlight.bootstrap((element, type) => {
+        function getLanguage(type) {
+            switch (type) {
+                case LiveHighlight.TYPE_JAVASCRIPT:
+                    return 'js';
+                case LiveHighlight.TYPE_STYLES:
+                    return 'css';
+                case LiveHighlight.TYPE_HTML:
+                    return 'markup';
+            }
+        }
+
+        element.className = `lang-${getLanguage(type)}`;
+        Prism.highlightElement(element);
+    });
+</script>
+<body>
+<div class="py-4">
+    <div class="container">
+
+        <h1>Examples</h1>
+        <p>First of all lets mock an endpoint to be able to make XHR request for our examples</p>
+
+        <script data-live-highlight>
+            const mock = new AxiosMockAdapter(axios, { delayResponse: 500 });
+            mock.onPost(/.*\/test/).reply((config) => {
+                let result = {};
+                let status = 200;
+
+                // assuming we are sending all forms with application/x-www-form-urlencoded
+                if (config.headers["Content-Type"] === "application/x-www-form-urlencoded") {
+                    const returnErrors = decodeURIComponent(config.data).split('&').map(entry => entry.split('=')).filter(entry => entry[0] === 'returnErrors')[0];
+                    if (returnErrors && returnErrors[1] === "true") {
+                        result.errors = {
+                            unknownKeyError: 'Something went wrong',
+                            firstName: 'Please correct First Name',
+                            email: 'This email address is already in use',
+                        };
+                        status = 422;
+                    }
+                }
+
+                return [status, result];
+            });
+        </script>
+
+        <p>Note that in order to use this mocked version of axios below, we will be passing it as "axiosInstance" via options</p>
+
+        <div class="mb-5">
+            <h2>Simple example</h2>
+            <p></p>
+
+            <div data-live-highlight-target="form1"></div>
+
+            <form id="form1" action="/test" method="post" data-live-highlight="form1">
+                <div class="form-group">
+                    <label for="firstName1">First Name</label>
+                    <input id="firstName1" class="form-control" type="text" required
+                            name="firstName">
+                </div>
+                <div class="form-group">
+                    <label for="lastName1">Last Name</label>
+                    <input id="lastName1" class="form-control" type="text" required
+                            name="lastName">
+                </div>
+                <div class="form-group">
+                    <label for="email1">Email</label>
+                    <input id="email1" class="form-control" type="email" required name="email">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        <input id="returnErrors1" class="form-check-input" type="checkbox"
+                                value="true" name="returnErrors">
+                        <label for="returnErrors1"
+                                class="form-check-label">Return errors from the server?</label>
+                    </div>
+                </div>
+
+                <div data-errors-summary></div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+
+            <script data-live-highlight="form1">
+                let formElement1 = document.getElementById('form1');
+                const form1 = new Form(formElement1, {
+                    submitElement: formElement1.querySelector('button[type="submit"]'),
+                    errorsSummary: formElement1.querySelector('[data-errors-summary]'),
+                    onSuccessfulSubmit: (response) => {
+                        console.log(response);
+                    },
+                    onFailedSubmit: (error) => {
+                        console.error(error);
+                    },
+                    errorsSummaryTemplate: (errors) => {
+                        return `<div class="alert alert-danger" role="alert">${errors.map(error => `<div>${error}</div>`).join()}</div>`;
+                    },
+                    parsley: {
+                        errorClass: 'is-invalid',
+                        successClass: 'is-valid',
+                        errorsWrapper: '<div class="invalid-feedback" aria-live="assertive"></div>',
+                        errorTemplate: '<div></div>',
+                    },
+                    axiosInstance: axios
+                });
+            </script>
+        </div>
+
+        <div class="mb-5">
+            <h2>Extending logic with inheritance</h2>
+            <p>In order not to pass the same options for every form lets encapsulate this logic in our BaseForm class</p>
+
+            <script data-live-highlight>
+                class BaseForm extends Form {
+                    constructor(el, options) {
+                        options = {
+                            ...options,
+                            submitElement: el.querySelector('button[type="submit"]'),
+                            errorsSummary: el.querySelector('[data-errors-summary]'),
+                            parsley: {
+                                errorClass: 'is-invalid',
+                                successClass: 'is-valid',
+                                errorsWrapper: '<div class="invalid-feedback" aria-live="assertive"></div>',
+                                errorTemplate: '<div></div>',
+                            },
+                            axiosInstance: axios
+                        };
+                        super(el, options);
+                    }
+
+                    onSuccessfulSubmit(response) {
+                        console.log(response);
+                    }
+
+                    onFailedSubmit(error) {
+                        console.error(error);
+                    }
+
+                    errorsSummaryTemplate(errors) {
+                        return `<div class="alert alert-danger" role="alert">${errors.map(error => `<div>${error}</div>`).join()}</div>`;
+                    }
+                }
+            </script>
+        </div>
+        <div class="mb-5">
+            <h2>Custom axios instance</h2>
+
+            <div data-live-highlight-target="form2"></div>
+
+            <form id="form2" action="/test" method="post" data-live-highlight="form2">
+                <div class="form-group">
+                    <label for="firstName2">First Name</label>
+                    <input id="firstName2" class="form-control" type="text" required
+                            name="firstName">
+                </div>
+                <div class="form-group">
+                    <label for="lastName2">Last Name</label>
+                    <input id="lastName2" class="form-control" type="text" required
+                            name="lastName">
+                </div>
+                <div class="form-group">
+                    <label for="email2">Email</label>
+                    <input id="email2" class="form-control" type="email" required name="email">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        <input id="returnErrors2" class="form-check-input" type="checkbox"
+                                value="true" name="returnErrors">
+                        <label for="returnErrors2"
+                                class="form-check-label">Return errors from the server?</label>
+                    </div>
+                </div>
+
+                <div data-errors-summary></div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+
+            <script data-live-highlight="form2">
+                const customApiInstance = axios.create({
+                    timeout: 60000,
+                    transformRequest: [...axios.defaults.transformRequest, (data, headers) => {
+                        headers['X-Requested-With'] = 'XMLHttpRequest';
+                        return data;
+                    }]
+                });
+
+                let formElement2 = document.getElementById('form2');
+                const form2 = new BaseForm(formElement2, {
+                    axiosInstance: customApiInstance,
+                    onSuccessfulSubmit: (response) => {
+                        console.log(response);
+                    },
+                    onFailedSubmit: (error) => {
+                        console.error(error);
+                    }
+                });
+            </script>
+        </div>
+        <div class="mb-5">
+            <h2>Overriding extended class methods with options</h2>
+            <p>Priority of the passing option is always higher then methods within the class</p>
+
+            <div data-live-highlight-target="form3"></div>
+
+            <form id="form3" action="/test" method="post">
+                <div class="form-group">
+                    <label for="firstName3">First Name</label>
+                    <input id="firstName3" class="form-control" type="text" required
+                            name="firstName">
+                </div>
+                <div class="form-group">
+                    <label for="lastName3">Last Name</label>
+                    <input id="lastName3" class="form-control" type="text" required
+                            name="lastName">
+                </div>
+                <div class="form-group">
+                    <label for="email3">Email</label>
+                    <input id="email3" class="form-control" type="email" required name="email">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        <input id="returnErrors3" class="form-check-input" type="checkbox"
+                                value="true" name="returnErrors">
+                        <label for="returnErrors3"
+                                class="form-check-label">Return errors from the server?</label>
+                    </div>
+                </div>
+
+                <div data-errors-summary></div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+
+            <script data-live-highlight="form3">
+                class ExtendedForm extends BaseForm {
+                    showPreloader() {
+                        console.log('show preloader');
+                    }
+
+                    hidePreloader() {
+                        console.log('hide preloader');
+                    }
+
+                    onBeforeSubmit() {
+                        this.showPreloader();
+                    }
+
+                    onAfterSubmit() {
+                        this.hidePreloader();
+                    }
+                }
+
+                let formElement3 = document.getElementById('form3');
+                const form3 = new ExtendedForm(formElement3, {
+                    // we still can pass an option via constructor argument to be able to override class method
+                    // note that we didn't declare onBeforeSubmit as an arrow function
+                    // otherwise we couldn't call onBeforeSubmit method from ExtendedForm
+                    onBeforeSubmit() {
+                        console.log('OVERRIDE!');
+                        this.onBeforeSubmit();
+                    }
+                });
+            </script>
+
+
+        </div>
+
+        <div class="mb-5">
+            <h2>ReCaptcha Checkbox</h2>
+
+            <p>Let's introduce a small helper function called onRecaptchaReady to be able to wait until Google Recaptcha library is loaded and ready. We will use it in the further examples</p>
+
+            <script data-live-highlight>
+                const callbackName = 'onRecatpchaLoad';
+                let isLoaded = false;
+                let isLoading = false;
+                const onloadQueue = [];
+
+                window[callbackName] = () => {
+                    isLoaded = true;
+                    onloadQueue.forEach(callback => callback(window.grecaptcha));
+                };
+
+                function insertScript() {
+                    const script = document.createElement('script');
+                    script.async = true;
+                    script.defer = true;
+                    script.src = `https://www.google.com/recaptcha/api.js?onload=${callbackName}&render=explicit`;
+                    const s = document.getElementsByTagName('script')[0];
+                    s.parentNode.insertBefore(script, s);
+                }
+
+                function onRecaptchaReady(callback) {
+                    if (!isLoading) {
+                        insertScript();
+                        isLoading = true;
+                    }
+                    if (isLoaded) {
+                        callback(window.grecaptcha);
+                    } else {
+                        onloadQueue.push(callback);
+                    }
+                }
+            </script>
+
+            <p>
+                In order to continue working with all controls from validation perspective we can introduce additional Parsley validator for recaptcha field.
+                It is possible because basically what recaptcha does is sending an additional token with your form data. After you click on its checkbox it sends request to a google server to get this token and then injects it within a &lt;textarea&gt; element to your form.
+                This token must be sent to the server and validated there. Read more about this <a
+                    href="https://developers.google.com/recaptcha/docs/display">here</a> and
+                <a href="https://developers.google.com/recaptcha/docs/verify">here</a>
+            </p>
+            <p>
+                We can treat recaptcha as an input that is required (so user must click on the recaptcha checkbox before he can submit form).
+                It gives us an additional advantage because if something goes wrong with the captcha validation on the server side we can return server validation errors and ask user to confirm he is not a robot one more time
+                To do so we have to have input which we can apply our validation to
+                but because Recaptcha add &lt;textarea&gt; dynamically we should have input that us fully controlled by us and is filled with token value once user confirms he is not a robot
+            </p>
+
+            <style data-live-highlight>
+                /* Utility class to hide recaptcha input from the user but still have it to be validated */
+                .visually-hidden {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    margin: -1px;
+                    border: 0;
+                    padding: 0;
+                    white-space: nowrap;
+                    clip-path: inset(100%);
+                    clip: rect(0 0 0 0);
+                    overflow: hidden;
+                }
+            </style>
+
+            <div data-live-highlight-target="form5"></div>
+
+            <form id="form5" action="/test" method="post" data-live-highlight="form5">
+                <div class="form-group">
+                    <label for="firstName5">First Name</label>
+                    <input id="firstName5" class="form-control" type="text" required
+                            name="firstName">
+                </div>
+                <div class="form-group">
+                    <label for="lastName5">Last Name</label>
+                    <input id="lastName5" class="form-control" type="text" required
+                            name="lastName">
+                </div>
+                <div class="form-group">
+                    <label for="email5">Email</label>
+                    <input id="email5" class="form-control" type="email" required name="email">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        <input id="returnErrors5" class="form-check-input" type="checkbox"
+                                value="true" name="returnErrors">
+                        <label for="returnErrors5"
+                                class="form-check-label">Return errors from the server?</label>
+                    </div>
+                </div>
+
+                <!-- Note how we lift up data-form control attribute to attach validation classes and errors to a different element -->
+                <div class="form-group" data-form-control>
+                    <div class="recaptcha">
+                        <div data-recaptcha-container></div>
+                        <input data-recaptcha-element
+                                type="text"
+                                name="captcha"
+                                class="visually-hidden"
+                                data-parsley-recaptcha
+                                data-parsley-validate-if-empty>
+                    </div>
+                </div>
+                <div data-errors-summary></div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+
+            <script data-live-highlight="form5">
+                Parsley.addValidator('recaptcha', {
+                    validateString: (value) => /\S/.test(value),
+                    priority: 512,
+                    messages: {
+                        en: 'Please confirm that you are not a robot',
+                    }
+                });
+
+                class RecaptchaForm extends BaseForm {
+                    constructor(el, options) {
+                        super(el, options);
+
+                        this.recaptchaId = null;
+                        this.recaptchaContainerElement = this.element.querySelector('[data-recaptcha-container]');
+                        this.recaptchaInputElement = this.element.querySelector('[data-recaptcha-element]');
+
+                        this._recaptchaSuccessCallback = this._recaptchaSuccessCallback.bind(this);
+                        this._recaptchaExpiredCallback = this._recaptchaExpiredCallback.bind(this);
+
+                        onRecaptchaReady((grecaptchaInstance) => {
+                            this._initRecaptcha(grecaptchaInstance);
+                        });
+                    }
+
+                    onAfterSubmit() {
+                        this.grecaptcha.reset(this.recaptchaId);
+                        this.recaptchaInputElement.value = '';
+                    }
+
+                    _initRecaptcha(grecaptchaInstance) {
+                        this.grecaptcha = grecaptchaInstance;
+
+                        this.recaptchaId = grecaptchaInstance.render(this.recaptchaContainerElement, {
+                            sitekey: '6Lc7aa8UAAAAAJRAnV0GRuezhIq0r6Ckni6z7vTK',
+                            callback: this._recaptchaSuccessCallback,
+                            'expired-callback': this._recaptchaExpiredCallback
+                        });
+                    }
+
+                    _recaptchaExpiredCallback() {
+                        this.recaptchaInputElement.value = '';
+                        this._triggerEventsOnRecaptchaInput();
+                    }
+
+                    _triggerEventsOnRecaptchaInput() {
+                        // trigger events manually to make validation update
+                        function createEvent(name) {
+                            if (typeof Event === 'function') {
+                                return new Event(name, { bubbles: true });
+                            }
+                            const event = document.createEvent('Event');
+                            event.initEvent(name, true, true);
+                            return event;
+                        }
+
+                        this.recaptchaInputElement.dispatchEvent(createEvent('input'));
+                        this.recaptchaInputElement.dispatchEvent(createEvent('change'));
+                    }
+
+                    _recaptchaSuccessCallback(response) {
+                        this.recaptchaInputElement.value = response;
+                        this._triggerEventsOnRecaptchaInput();
+                    }
+                }
+
+                let formElement5 = document.getElementById('form5');
+                const form5 = new RecaptchaForm(formElement5);
+            </script>
+        </div>
+        <div class="mb-5">
+            <h2>Pre-request logic - Invisible ReCaptcha</h2>
+            <p> Because Invisible ReCaptcha is totally different from the ordinary "checkbox" approach we can't treat it as another form fiend and so Parsley validator.
+                To be able to make form wait until Invisible ReCaptcha challenge is passed we can implement "beforeSubmitPromise" option which should return a Promise.
+                Form will be submitted only after that promise is resolved.
+             </p>
+
+            <div data-live-highlight-target="form6"></div>
+
+            <form id="form6" action="/test" method="post">
+                <div class="form-group">
+                    <label for="firstName6">First Name</label>
+                    <input id="firstName6" class="form-control" type="text" required
+                            name="firstName">
+                </div>
+                <div class="form-group">
+                    <label for="lastName6">Last Name</label>
+                    <input id="lastName6" class="form-control" type="text" required
+                            name="lastName">
+                </div>
+                <div class="form-group">
+                    <label for="email6">Email</label>
+                    <input id="email6" class="form-control" type="email" required name="email">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        <input id="returnErrors6" class="form-check-input" type="checkbox"
+                                value="true" name="returnErrors">
+                        <label for="returnErrors6"
+                                class="form-check-label">Return errors from the server?</label>
+                    </div>
+                </div>
+
+                <div data-errors-summary></div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            <script data-live-highlight="form6">
+                // deferred object to be able to resolve the promise outside
+                // when one of the recaptcha callbacks is called
+                class Deferred {
+                    constructor() {
+                        this.resolve = null;
+                        this.reject = null;
+
+                        this.promise = new Promise((resolve, reject) => {
+                            this.resolve = resolve;
+                            this.reject = reject;
+                        });
+                    }
+                }
+
+                class InvisibleRecaptchaForm extends BaseForm {
+                    constructor(el, options) {
+                        super(el, options);
+                        this._initRecaptcha();
+                    }
+
+                    _initRecaptcha() {
+                        this._captchaPromise = new Promise((resolve) => {
+                            const recaptchaPlaceholder = document.createElement('div');
+                            this.element.insertAdjacentElement('beforeEnd', recaptchaPlaceholder);
+                            onRecaptchaReady((grecaptchaInstance) => {
+                                const captchaId = grecaptchaInstance.render(recaptchaPlaceholder, {
+                                    sitekey: '6LeFZ68UAAAAAIqdAzgvDB_kRlIZHz-Vl8Fmo9Zc',
+                                    callback: () => {
+                                        // the user successfully passed popup challenge so resolve the promise
+                                        this.captchaIsReady.resolve();
+                                    },
+                                    'error-callback': (error) => {
+                                        // the user couldn't pass popup challenge so reject the promise
+                                        this.captchaIsReady.reject();
+                                    },
+                                    'expired-callback': (error) => {
+                                        // the user waited to long and popup challenge expired so reject the promise
+                                        this.captchaIsReady.reject();
+                                    },
+                                    size: 'invisible',
+                                });
+                                resolve([grecaptchaInstance, captchaId]);
+                            })
+                        });
+                    }
+
+                    beforeSubmitPromise() {
+                        return this._getCaptcha().then(([grecaptchaInstance, captchaId]) => {
+                            if (captchaId !== "undefined") {
+                                // create Deferred and return its promise which will be waited before submit
+                                this.captchaIsReady = new Deferred();
+                                // execute current recaptcha instance to check whether the user is real or a bot
+                                // if it's not sure the user is real the popup challenge will be shown
+                                grecaptchaInstance.execute(captchaId);
+                                return this.captchaIsReady.promise;
+                            }
+                        })
+                    }
+
+                    _getCaptcha() {
+                        return this._captchaPromise;
+                    }
+
+                    onSuccessfulSubmit(response) {
+                        console.log(response);
+                    }
+                }
+
+                let formElement6 = document.getElementById('form6');
+                const form6 = new InvisibleRecaptchaForm(formElement6);
+            </script>
+        </div>
+    </div>
+</div>
+</body>
+</html>
