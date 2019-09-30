@@ -1,4 +1,4 @@
-# Axios Singular
+# Forms
 
 [Live Demo](https://delete-agency.github.io/forms/)
 
