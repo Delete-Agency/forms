@@ -2,7 +2,7 @@ import $ from 'jquery';
 import Parsley from 'parsleyjs';
 import axios from 'axios';
 import constants from './constants';
-import { getParent, createEvent } from '@deleteagency/dom-helper';
+import { querySelectorParent, createEvent } from '@deleteagency/dom-helper';
 
 const ENCTYPE_URLENCODED = 'application/x-www-form-urlencoded';
 const ENCTYPE_MULTIPART = 'multipart/form-data';
@@ -277,7 +277,7 @@ export default class Form {
                         return true;
                     }
 
-                    let validateAlwaysParent = getParent(
+                    let validateAlwaysParent = querySelectorParent(
                         element,
                         `[${this.options.validateAlwaysAttribute}]`
                     );
