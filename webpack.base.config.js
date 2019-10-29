@@ -4,12 +4,12 @@ module.exports = (env, argv) => {
     return {
         mode: "production",
         entry: {
-            "forms": "./index.js",
+            "forms": ["./src/index.js"]
         },
         output: {
-            path: __dirname + '/build',
             filename: "[name].min.js",
-            libraryTarget: 'window'
+            libraryTarget: 'umd',
+            library: 'Forms',
         },
         resolve: {
             extensions: ['.js'],
@@ -24,11 +24,14 @@ module.exports = (env, argv) => {
                     use: {
                         loader: "babel-loader",
                         options: {
-                            presets: ['@babel/preset-env'],
-                            plugins: [
-                                '@babel/plugin-transform-object-assign',
-                                '@babel/plugin-proposal-class-properties',
-                                '@babel/plugin-proposal-object-rest-spread'
+                            presets: [
+                                [
+                                    '@babel/preset-env',
+                                    {
+                                        useBuiltIns: 'usage',
+                                        corejs: 3
+                                    }
+                                ]
                             ]
                         }
                     }
