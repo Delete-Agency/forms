@@ -4,7 +4,7 @@ module.exports = {
             '@babel/preset-env',
             {
                 useBuiltIns: 'usage',
-                corejs: 3,
+                corejs: 2,
                 targets: [
                     "ie 11",
                     "last 2 firefox versions",
