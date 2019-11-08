@@ -25,6 +25,10 @@ export default class Form {
 
         this._applyOptions(options);
 
+        this.onSubmit = this.onSubmit.bind(this);
+        this._onFieldError = this._onFieldError.bind(this);
+        this._onFormError = this._onFormError.bind(this);
+
         // todo server errors
         if (this._isAsync()) {
             this.getParsleyForm().on('form:submit', this.onSubmit);
@@ -164,7 +168,7 @@ export default class Form {
         return this.options.onError ? this.options.onError.call(this, error) : this.onError(error);
     }
 
-    onSubmit = () => {
+    onSubmit() {
         this._getBeforeSubmitPromise().then(() => {
                 if (!this.isSubmiting) {
                     try {
@@ -370,7 +374,7 @@ export default class Form {
         this.getParsleyForm().destroy();
     }
 
-    _onFieldError = field => {
+    _onFieldError(field) {
         // a11y fix
         field.$element.attr('aria-describedby', field._ui.errorsWrapperId);
         // global event to notify other components
@@ -379,7 +383,7 @@ export default class Form {
         field.element.dispatchEvent(errorEvent);
     };
 
-    _onFormError = form => {
+    _onFormError(form) {
         let event = createEvent(constants.EVENT_FORM_VALIDATION_FAILED);
         event.failedElements = form.fields
             .filter(field => field.validationResult !== true)
