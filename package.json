@@ -36,6 +36,6 @@
     "jquery": "^3.4.1",
     "axios": "^0.19.0",
     "parsleyjs": "^2.9.1",
-    "@deleteagency/dom-helper": "^3.0.0-1"
+    "@deleteagency/dom-helper": "^3.0.0"
   }
 }
