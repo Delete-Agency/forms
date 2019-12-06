@@ -134,7 +134,6 @@
                 });
             </script>
         </div>
-
         <div class="mb-5">
             <h2>Extending logic with inheritance</h2>
             <p>In order not to pass the same options for every form lets encapsulate this logic in our BaseForm class</p>
@@ -294,7 +293,6 @@
 
 
         </div>
-
         <div class="mb-5">
             <h2>ReCaptcha Checkbox</h2>
 
@@ -481,7 +479,7 @@
             <p> Because Invisible ReCaptcha is totally different from the ordinary "checkbox" approach we can't treat it as another form fiend and so Parsley validator.
                 To be able to make form wait until Invisible ReCaptcha challenge is passed we can implement "beforeSubmitPromise" option which should return a Promise.
                 Form will be submitted only after that promise is resolved.
-             </p>
+            </p>
 
             <div data-live-highlight-target="form6"></div>
 
@@ -584,6 +582,73 @@
 
                 let formElement6 = document.getElementById('form6');
                 const form6 = new InvisibleRecaptchaForm(formElement6);
+            </script>
+        </div>
+        <div class="mb-5">
+            <h2>Custom handling</h2>
+
+            <div data-live-highlight-target="form7"></div>
+
+            <form id="form7" action="/test" method="post" data-live-highlight="form7">
+                <div class="form-group">
+                    <label for="firstName7">First Name</label>
+                    <input id="firstName7" class="form-control" type="text" required
+                            name="firstName">
+                </div>
+                <div class="form-group">
+                    <label for="lastName7">Last Name</label>
+                    <input id="lastName7" class="form-control" type="text" required
+                            name="lastName">
+                </div>
+                <div class="form-group">
+                    <label for="email7">Email</label>
+                    <input id="email7" class="form-control" type="email" required name="email">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        <input id="returnErrors7" class="form-check-input" type="checkbox"
+                                value="true" name="returnErrors">
+                        <label for="returnErrors7"
+                                class="form-check-label">Return errors from the server?</label>
+                    </div>
+                </div>
+
+                <div data-errors-summary></div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+
+            <script data-live-highlight="form7">
+                {
+                    let formElement = document.getElementById('form7');
+                    const form = new BaseForm(formElement, {
+                        onSuccessfulSubmit: (response) => {
+                            console.log(response);
+                        },
+                        onFailedSubmit: (error) => {
+                            console.error(error);
+                        },
+                        extractValidationErrors({ data }) {
+                            let result = null;
+
+                            if (!data.succeeded) {
+                                if (data.invalidMembers) {
+                                    result = data.invalidMembers;
+                                }
+
+                                if (data.errorMessage) {
+                                    if (result) {
+                                        result._ = data.errorMessage;
+                                    } else {
+                                        result = { _: data.errorMessage };
+                                    }
+                                }
+                            }
+
+                            return result;
+                        }
+                    });
+                }
             </script>
         </div>
     </div>

@@ -196,12 +196,15 @@ export default class Form {
 
     _handleSuccessSubmit(response) {
         this._hideErrorsSummary();
-        this._onSuccessfulSubmit(response);
+        const validationErrors = this._extractValidationErrors(response);
+        if (validationErrors) {
+            this._renderValidationErrors(validationErrors);
+        } else {
+            this._onSuccessfulSubmit(response);
+        }
     }
 
-    _handleErrorSubmit(error) {
-        const response = error.response;
-        const validationErrors = this._extractValidationErrors(response);
+    _renderValidationErrors(validationErrors){
         const fieldsErrors = this._getFieldsConnectedErrors(validationErrors);
         if (Object.keys(fieldsErrors).length > 0) {
             this._applyFieldErrors(fieldsErrors);
@@ -214,6 +217,15 @@ export default class Form {
             return result;
         }, []);
         this._applyErrorsSummary(restErrors);
+    }
+
+    _handleErrorSubmit(error) {
+        const response = error.response;
+        const validationErrors = this._extractValidationErrors(response);
+        if(validationErrors){
+            this._renderValidationErrors(validationErrors);
+        }
+
         this._onFailedSubmit(response);
     }
 
