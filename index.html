@@ -57,17 +57,18 @@
                 let status = 200;
 
                 // assuming we are sending all forms with application/x-www-form-urlencoded
-                if (config.headers["Content-Type"] === "application/x-www-form-urlencoded") {
-                    const returnErrors = decodeURIComponent(config.data).split('&').map(entry => entry.split('=')).filter(entry => entry[0] === 'returnErrors')[0];
-                    if (returnErrors && returnErrors[1] === "true") {
-                        result.errors = {
-                            unknownKeyError: 'Something went wrong',
-                            firstName: 'Please correct First Name',
-                            email: 'This email address is already in use',
-                        };
-                        status = 422;
-                    }
+                const returnErrors = decodeURIComponent(config.data).split('&').map(entry => entry.split('=')).filter(entry => entry[0] === 'returnErrors')[0];
+                if (returnErrors && returnErrors[1] === "true") {
+                    result.errors = {
+                        unknownKeyError: 'Something went wrong',
+                        firstName: 'Please correct First Name',
+                        email: 'This email address is already in use',
+                    };
+                    status = 422;
+                } else {
+                    result.successMessage = 'Thanks for submitting this form!'
                 }
+
 
                 return [status, result];
             });
@@ -85,12 +86,12 @@
                 <div class="form-group">
                     <label for="firstName1">First Name</label>
                     <input id="firstName1" class="form-control" type="text" required
-                            name="firstName">
+                           name="firstName">
                 </div>
                 <div class="form-group">
                     <label for="lastName1">Last Name</label>
                     <input id="lastName1" class="form-control" type="text" required
-                            name="lastName">
+                           name="lastName">
                 </div>
                 <div class="form-group">
                     <label for="email1">Email</label>
@@ -100,9 +101,9 @@
                 <div class="form-group">
                     <div class="form-check">
                         <input id="returnErrors1" class="form-check-input" type="checkbox"
-                                value="true" name="returnErrors">
+                               value="true" name="returnErrors">
                         <label for="returnErrors1"
-                                class="form-check-label">Return errors from the server?</label>
+                               class="form-check-label">Return errors from the server?</label>
                     </div>
                 </div>
 
@@ -114,9 +115,9 @@
                 let formElement1 = document.getElementById('form1');
                 const form1 = new Forms.Form(formElement1, {
                     submitElement: formElement1.querySelector('button[type="submit"]'),
-                    errorsSummary: formElement1.querySelector('[data-errors-summary]'),
+                    errorsSummaryElement: formElement1.querySelector('[data-errors-summary]'),
                     onSuccessfulSubmit: (response) => {
-                        console.log(response);
+                        alert(response.data.successMessage);
                     },
                     onFailedSubmit: (error) => {
                         console.error(error);
@@ -136,28 +137,32 @@
         </div>
         <div class="mb-5">
             <h2>Extending logic with inheritance</h2>
-            <p>In order not to pass the same options for every form lets encapsulate this logic in our BaseForm class</p>
+            <p>In order not to pass the same options for every form lets encapsulate this logic in our BaseForm
+                class</p>
 
             <script data-live-highlight>
                 class BaseForm extends Forms.Form {
                     constructor(el, options) {
                         options = {
-                            ...options,
                             submitElement: el.querySelector('button[type="submit"]'),
-                            errorsSummary: el.querySelector('[data-errors-summary]'),
+                            errorsSummaryElement: el.querySelector('[data-errors-summary]'),
                             parsley: {
                                 errorClass: 'is-invalid',
                                 successClass: 'is-valid',
                                 errorsWrapper: '<div class="invalid-feedback" aria-live="assertive"></div>',
                                 errorTemplate: '<div></div>',
+                                // override default strategy for searching elements to attach a class and put errors in
+                                classHandler: field => field.$element.closest('[data-form-control]'),
+                                errorsContainer: field => field.$element.closest('[data-form-control]'),
                             },
-                            axiosInstance: axios
+                            axiosInstance: axios,
+                            ...options,
                         };
                         super(el, options);
                     }
 
                     onSuccessfulSubmit(response) {
-                        console.log(response);
+                        alert(response.data.successMessage);
                     }
 
                     onFailedSubmit(error) {
@@ -217,7 +222,7 @@
                 const form2 = new BaseForm(formElement2, {
                     axiosInstance: customApiInstance,
                     onSuccessfulSubmit: (response) => {
-                        console.log(response);
+                        alert(response.data.successMessage);
                     },
                     onFailedSubmit: (error) => {
                         console.error(error);
@@ -250,9 +255,9 @@
                 <div class="form-group">
                     <div class="form-check">
                         <input id="returnErrors3" class="form-check-input" type="checkbox"
-                                value="true" name="returnErrors">
+                               value="true" name="returnErrors">
                         <label for="returnErrors3"
-                                class="form-check-label">Return errors from the server?</label>
+                               class="form-check-label">Return errors from the server?</label>
                     </div>
                 </div>
 
@@ -414,8 +419,8 @@
                 });
 
                 class RecaptchaForm extends BaseForm {
-                    constructor(el, options) {
-                        super(el, options);
+                    constructor(el) {
+                        super(el);
 
                         this.recaptchaId = null;
                         this.recaptchaContainerElement = this.element.querySelector('[data-recaptcha-container]');
@@ -576,7 +581,7 @@
                     }
 
                     onSuccessfulSubmit(response) {
-                        console.log(response);
+                        alert(response.data.successMessage);
                     }
                 }
 
@@ -585,20 +590,29 @@
             </script>
         </div>
         <div class="mb-5">
-            <h2>Custom handling</h2>
-
+            <h2>Handling errors from the server</h2>
+            <p>
+                Lets mock up an additional endpoint which always responds with 200 code but in some cases form submission can't
+                be treated as valid one so server returns additional flag and a string with the error text.
+                Keeping in mind that @deleteagency/forms will call onSuccessfulSubmit only when
+            </p>
+            <ul>
+                <li>successful response is received</li>
+                <li>extractValidationErrors callback returns falsy value or empty object</li>
+            </ul>
+            <p>we can write our own errors extraction function based on the server response:</p>
             <div data-live-highlight-target="form7"></div>
 
-            <form id="form7" action="/test" method="post" data-live-highlight="form7">
+            <form id="form7" action="/custom-errors" method="post">
                 <div class="form-group">
                     <label for="firstName7">First Name</label>
                     <input id="firstName7" class="form-control" type="text" required
-                            name="firstName">
+                           name="firstName">
                 </div>
                 <div class="form-group">
                     <label for="lastName7">Last Name</label>
                     <input id="lastName7" class="form-control" type="text" required
-                            name="lastName">
+                           name="lastName">
                 </div>
                 <div class="form-group">
                     <label for="email7">Email</label>
@@ -608,9 +622,9 @@
                 <div class="form-group">
                     <div class="form-check">
                         <input id="returnErrors7" class="form-check-input" type="checkbox"
-                                value="true" name="returnErrors">
+                               value="true" name="returnErrors">
                         <label for="returnErrors7"
-                                class="form-check-label">Return errors from the server?</label>
+                               class="form-check-label">Return errors from the server?</label>
                     </div>
                 </div>
 
@@ -620,29 +634,39 @@
 
             <script data-live-highlight="form7">
                 {
+                    mock.onPost(/.*\/custom-errors/).reply((config) => {
+                        let result = {
+                            succeeded: true,
+                        };
+                        let status = 200;
+
+                        // assuming we are sending all forms with application/x-www-form-urlencoded
+                        const returnErrors = decodeURIComponent(config.data).split('&').map(entry => entry.split('=')).filter(entry => entry[0] === 'returnErrors')[0];
+                        if (returnErrors && returnErrors[1] === "true") {
+                            result.succeeded = false;
+                            result.errorMessage = 'Something went wrong'
+                        } else {
+                            result.succeeded = true;
+                            result.successMessage = 'Thanks for submitting this form!'
+                        }
+
+                        return [status, result];
+                    });
+
                     let formElement = document.getElementById('form7');
                     const form = new BaseForm(formElement, {
                         onSuccessfulSubmit: (response) => {
-                            console.log(response);
+                            alert(response.data.successMessage);
                         },
                         onFailedSubmit: (error) => {
                             console.error(error);
                         },
                         extractValidationErrors({ data }) {
-                            let result = null;
+                            let result = {};
 
                             if (!data.succeeded) {
-                                if (data.invalidMembers) {
-                                    result = data.invalidMembers;
-                                }
-
-                                if (data.errorMessage) {
-                                    if (result) {
-                                        result._ = data.errorMessage;
-                                    } else {
-                                        result = { _: data.errorMessage };
-                                    }
-                                }
+                                // apply this message with some generic name that will be handled as error summary
+                                result = { _: data.errorMessage };
                             }
 
                             return result;
