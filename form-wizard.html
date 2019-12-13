@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Forms demo</title>
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+          crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/themes/prism-okaidia.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@deleteagency/live-highlight@0.0.1/build/live-highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.min.js"
+            integrity="sha256-S1J4GVHHDMiirir9qsXWc8ZWw74PHHafpsHp5PXtjTs="
+            crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/axios-mock-adapter@1.17.0/dist/axios-mock-adapter.min.js"></script>
+    <script src="demo/dist/forms.min.js"></script>
+
+    <style>
+        [data-form-control].is-invalid .invalid-feedback {
+            display: block;
+        }
+
+        .is-active {
+            display: block;
+        }
+
+        .is-inactive {
+            display: none;
+        }
+    </style>
+</head>
+<script>
+    LiveHighlight.bootstrap((element, type) => {
+        function getLanguage(type) {
+            switch (type) {
+                case LiveHighlight.TYPE_JAVASCRIPT:
+                    return 'js';
+                case LiveHighlight.TYPE_STYLES:
+                    return 'css';
+                case LiveHighlight.TYPE_HTML:
+                    return 'markup';
+            }
+        }
+
+        element.className = `lang-${getLanguage(type)}`;
+        Prism.highlightElement(element);
+    });
+</script>
+<body>
+<div class="py-4">
+    <div class="container">
+        <script>
+            const mock = new AxiosMockAdapter(axios, { delayResponse: 500 });
+            mock.onPost(/.*\/test/).reply((config) => {
+                let result = {};
+                let status = 200;
+
+                // assuming we are sending all forms with application/x-www-form-urlencoded
+                const returnErrors = decodeURIComponent(config.data).split('&').map(entry => entry.split('=')).filter(entry => entry[0] === 'returnErrors')[0];
+                if (returnErrors && returnErrors[1] === "true") {
+                    result.errors = {
+                        unknownKeyError: 'Something went wrong',
+                        firstName: 'Please correct First Name',
+                        email: 'This email address is already in use',
+                    };
+                    status = 422;
+                } else {
+                    result.successMessage = 'Thanks for submitting this form!'
+                }
+
+
+                return [status, result];
+            });
+
+            class BaseForm extends Forms.Form {
+                constructor(el, options) {
+                    options = {
+                        submitElement: el.querySelector('button[type="submit"]'),
+                        errorsSummaryElement: el.querySelector('[data-errors-summary]'),
+                        parsley: {
+                            errorClass: 'is-invalid',
+                            successClass: 'is-valid',
+                            errorsWrapper: '<div class="invalid-feedback" aria-live="assertive"></div>',
+                            errorTemplate: '<div></div>',
+                            // override default strategy for searching elements to attach a class and put errors in
+                            classHandler: field => field.$element.closest('[data-form-control]'),
+                            errorsContainer: field => field.$element.closest('[data-form-control]'),
+                        },
+                        axiosInstance: axios,
+                        validateVisibleOnly: false,
+                        ...options,
+                    };
+                    super(el, options);
+                }
+
+                onSuccessfulSubmit(response) {
+                    alert(response.data.successMessage);
+                }
+
+                onFailedSubmit(error) {
+                    console.error(error);
+                }
+
+                errorsSummaryTemplate(errors) {
+                    return `<div class="alert alert-danger" role="alert">${errors.map(error => `<span>${error}</span>`).join(', ')}</div>`;
+                }
+            }
+        </script>
+
+        <div class="mb-5">
+            <h2></h2>
+            <p></p>
+
+            <div data-live-highlight-target="form"></div>
+
+            <div id="wizard">
+                <form id="form" action="/test" method="post">
+                    <div data-step>
+                        <div class="form-group">
+                            <label for="firstName3">First Name</label>
+                            <input id="firstName3" class="form-control" type="text" required
+                                   name="firstName">
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName3">Last Name</label>
+                            <input id="lastName3" class="form-control" type="text" required
+                                   name="lastName">
+                        </div>
+                        <button type="button" data-next class="btn btn-primary">Continue</button>
+                    </div>
+                    <div data-step>
+                        <div class="form-group">
+                            <label for="email3">Email</label>
+                            <input id="email3" class="form-control" type="email" required name="email">
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input id="returnErrors3" class="form-check-input" type="checkbox"
+                                       value="true" name="returnErrors">
+                                <label for="returnErrors3"
+                                       class="form-check-label">Return errors from the server?</label>
+                            </div>
+                        </div>
+                        <button type="button" data-prev class="btn btn-primary">Back</button>
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                    <div data-errors-summary></div>
+                </form>
+            </div>
+
+            <script data-live-highlight="form">
+                const formElement = document.getElementById('form');
+                const wizardElement = document.getElementById('wizard');
+                const wizard = new Forms.FormWizard(wizardElement, new BaseForm(formElement), {
+                    continueElement: '[data-next]',
+                    backElement: '[data-prev]',
+                });
+                console.log(wizard);
+            </script>
+        </div>
+    </div>
+</div>
+</body>
+</html>
